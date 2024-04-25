@@ -162,4 +162,3 @@ cython_debug/
 .streamlit/
 database/*.json
 node_modules/
-main-old.py
