@@ -4,11 +4,10 @@ from firebase_admin import credentials, storage
 import re
 import os
 import json
-from dotenv import load_dotenv
 
 
 
-serviceAccount = os.path.join(os.path.dirname(__file__), ".", "serviceAccount.json")
+# serviceAccount = os.path.join(os.path.dirname(__file__), ".", "serviceAccount.json")
 
 # Initialize Firebase Admin SDK
 # Check if the Firebase Admin SDK is already initialized
