@@ -22,18 +22,34 @@ def save_edited_csv(data_frame, csv_path):
     upload_csv_file(edited_csv, csv_path)
     st.toast(":green[Edited CSV file saved successfully.]", icon="🎉")
 
-def main():
-    csv_list = list_files_in_folder("csv_files")
+def handle_selected_csv_file():
+    st.session_state.clear()
+    st.toast("Hiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii")
 
+
+def main():
     st.sidebar.title(":blue[EDITING CSV] 🧊")
+    
+    csv_list = list_files_in_folder("csv_files")
 
     selected_csv_file = st.sidebar.selectbox(
         ":blue[Select a CSV ...]", 
         csv_list, 
         index=None,
-        placeholder="please select ...")
+        placeholder="please select ...",
+        on_change=handle_selected_csv_file
+        )
+    
+            
 
     if selected_csv_file:
+        # # Check if selected_csv_file has changed
+        # if selected_csv_file in st.session_state:
+        #     if st.session_state.selected_csv_file != selected_csv_file:
+        #         st.session_state.clear()
+        #     st.session_state.selected_csv_file = selected_csv_file
+        #     csv, _, csv_path = get_file_in_folder(st.session_state.selected_csv_file)
+        
         st.session_state.selected_csv_file = selected_csv_file
         
         csv, _, csv_path = get_file_in_folder(st.session_state.selected_csv_file)
@@ -71,6 +87,7 @@ def main():
                     if tabs == "ALL DATA":
                         page_number = st.sidebar.number_input(":blue[Page Number]", min_value=1, max_value=total_pages, value=1)
                         selected_csv_data = load_data_for_page(st.session_state.dataframe, page_number - 1, rows_per_page)
+                        # st.sidebar.write(selected_csv_data)
                         for index, row in selected_csv_data[[selected_csv]].iterrows():
                             st.write(f":blue[Index : {index}]")
                             with st.container(border=True):
@@ -86,13 +103,15 @@ def main():
                                 # Get the edited value from the user
                                 edited_value = st.text_input(f"Edit {selected_csv}", value=row[selected_csv], key=text_input_key, autocomplete="off")
                                 
+                                # st.button("Reset", type="primary")
+                                
                                 if edited_value != row[selected_csv]:
                                     with st.spinner('Updating...'):
-                                        time.sleep(2)
                                         st.session_state.dataframe[selected_csv][index] = edited_value
                                         if index not in st.session_state.edited_row:
                                             st.session_state.edited_row.append(index)
                                         st.success(' Edited Successfully!')
+                                        
                             st.divider()
                             
                     if tabs == "Edited DATA (unsaved)":
@@ -117,15 +136,14 @@ def main():
                                 
                                 if edited_value != row[selected_csv]:
                                     with st.spinner('Updating...'):
-                                        time.sleep(2)
                                         st.session_state.dataframe[selected_csv][index] = edited_value
                                         st.success(' Edited Successfully!')
+                                        
                             st.divider()
 
                     save_edited_csv_btn = st.sidebar.button("Save edited CSV",type="primary")
                     if save_edited_csv_btn:
                         save_edited_csv(st.session_state.dataframe, csv_path)
-                        time.sleep(2)
                         st.session_state.clear()
                         st.switch_page("main.py")
 
