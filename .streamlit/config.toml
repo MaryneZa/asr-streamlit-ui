@@ -6,5 +6,4 @@ textColor="#000000"
 backgroundColor="#f7f9fa"
 font="sans serif"
 
-[server]
-port = 6916
+
