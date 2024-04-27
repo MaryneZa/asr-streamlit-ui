@@ -1,19 +1,9 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, storage
-import datetime
-
-# from firebase_admin import credentials
-
-import re
 import pandas as pd
 import os
-import json
-
 from uuid import uuid4
-
-# from google.cloud import storage
-
 
 # serviceAccount = os.path.join(os.path.dirname(__file__), ".", "serviceAccount.json")
 
@@ -43,9 +33,11 @@ if not firebase_admin._apps:
 # Get a reference to the Firebase Storage bucket
 bucket = storage.bucket()
 
+
 def upload_edited_csv_file(csv_content, csv_file_path):
 
     bucket_path = f"csv_files/{csv_file_path}"
+
     # Check if the file already exists in Firebase Storage
     existing_blob = bucket.blob(bucket_path)
 
@@ -55,9 +47,12 @@ def upload_edited_csv_file(csv_content, csv_file_path):
 
     # Convert the CSV content to bytes
     csv_content_bytes = csv_content.encode()
+
     # Upload the CSV content to Firebase Storage
     blob = bucket.blob(bucket_path)
+
     blob.upload_from_string(csv_content_bytes, content_type="text/csv")
+
     print("save edited file!")
 
 
@@ -70,7 +65,9 @@ def upload_csv_files(folder_path):
         if file_name.endswith(".csv"):
             # Read the CSV file into a DataFrame
             file_path = os.path.join(folder_path, file_name)
+
             df = pd.read_csv(file_path)
+
             # Add a new column to the DataFrame
             df["audio_link"] = get_audio_link(df, "full_path", parent_folder_name)
             df["raw_text"] = df["text"]  # Example data for the new column
@@ -84,6 +81,7 @@ def upload_csv_files(folder_path):
 
             # Upload the modified CSV content to Firebase Storage
             blob = bucket.blob(f"csv_files/{folder_name}/{file_name}")
+
             blob.upload_from_string(csv_content_bytes, content_type="text/csv")
 
 
@@ -95,12 +93,12 @@ def name_csv_list(folder_path):
     for blob in blobs:
         # Get the path after the prefix
         relative_path = os.path.relpath(blob.name, folder_path)
+
         # Extract folder name from the relative path
         folder_name = os.path.dirname(relative_path)
-        print(f"folder_name : {folder_name}")
-        # Add folder name to the set
 
         folder_names.add(folder_name)
+
     if "" in folder_names:
         folder_names.remove("")
 
@@ -110,8 +108,9 @@ def name_csv_list(folder_path):
 def get_csv_file(folder_path, file):
     if folder_path is None:
         return None, "Folder path is None.", None
-    # Get the blob (file) within the specified folder
+
     path = folder_path.split("/")
+
     blob = bucket.get_blob(f"csv_files/{folder_path}/{file}")
 
     if blob is not None:
@@ -124,7 +123,6 @@ def get_csv_file(folder_path, file):
 
 
 def get_audio_link(df, columns, folder_name):
-    # print(df[columns])
     audio_link = []
     for index, row in df.iterrows():
 
@@ -162,6 +160,7 @@ def download_csv_file(destination_file_path):
     blob = bucket.blob(
         f"csv_files/{destination_file_path}"
     )  # Path to the CSV file in Firebase Storage
+    
     blob.download_to_filename(f"D:/{destination_file_path}")
 
     print("CSV file downloaded successfully.")
@@ -182,7 +181,9 @@ def upload_audio_files(folder_path):
             blob = bucket.blob(bucket_path)
 
             token = uuid4()
+            
             metadata = {"firebaseStorageDownloadTokens": token}
+            
             # Assign the token as metadata
             blob.metadata = metadata
 
@@ -191,21 +192,6 @@ def upload_audio_files(folder_path):
             # Make the file public (OPTIONAL). To be used for Cloud Storage URL.
             blob.make_public()
 
-            # Fetches a public URL from GCS.
-            gcs_storageURL = blob.public_url
-
-            # Generates a URL with Access Token from Firebase.
-            firebase_storageURL = "https://firebasestorage.googleapis.com/v0/b/{}/o/{}?alt=media&token={}".format(
-                storageBucket,
-                bucket_path.replace("/", "%2F").replace(" ", "%20"),
-                token,
-            )
-
             print(
-                {
-                    "gcs_storageURL": gcs_storageURL,
-                    "firebase_storageURL": firebase_storageURL,
-                }
+                f"{parent_folder_name}/{file_name} : Audio file uploaded successfully."
             )
-
-            print("Audio file uploaded successfully.")
