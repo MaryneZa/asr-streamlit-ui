@@ -4,6 +4,7 @@ from firebase_admin import credentials, storage
 import pandas as pd
 import os
 from uuid import uuid4
+from io import StringIO
 
 # serviceAccount = os.path.join(os.path.dirname(__file__), ".", "serviceAccount.json")
 
@@ -56,9 +57,78 @@ def upload_edited_csv_file(csv_content, csv_file_path):
     print("save edited file!")
 
 
-def upload_csv_files(folder_path):
+def download_csv_file(csv_file_path):
+    bucket_path = f"csv_files/{csv_file_path}"
+
+    # Get the blob from Firebase Storage
+    blob = bucket.blob(bucket_path)
+
+    # Download the CSV content as bytes
+    csv_content_bytes = blob.download_as_string()
+
+    return csv_content_bytes
+
+
+def get_group(files, group):
+    df_dict = {}
+    remain_train = 0
+    remain_val = 0
+    group_size = 0
+    for df_name, df_value in files.items():
+        len_df = len(df_value)
+        remain = len_df % group
+        if not group_size:  # check if its the first file
+            arr_train = [0] * len_df
+            group_size = len_df // group
+            if group_size:  # check if its more than group value
+                for i in range(group_size):
+                    start_idx = i * group
+                    end_idx = start_idx + group
+                    arr_train[start_idx:end_idx] = [i + 1] * group
+            if remain:
+                remain_train = remain
+                start_idx = group_size * group
+                end_idx = start_idx + remain
+                arr_train[start_idx:end_idx] = [group_size + 1] * remain_train
+            df_dict[df_name] = arr_train
+        else:  # check the following files
+            added_group_size = group_size + 1
+            total_remain = len_df + remain_train
+            arr_val = [added_group_size] * len_df
+            if total_remain <= group:
+                pass
+            else:
+                fraction = group - remain_train
+
+                # arr_val[0:fraction] = group_size + 1
+
+                group_size_remain = (len_df - fraction) // group
+
+                remain_val = (len_df - fraction) % group
+
+                if group_size_remain:
+                    for i in range(group_size_remain):
+                        start_idx = fraction + (i * group)
+                        end_idx = start_idx + group
+                        arr_val[start_idx:end_idx] = [
+                            (added_group_size) + (i + 1)
+                        ] * group
+
+                if remain_val:
+                    start_idx = fraction + (group_size_remain * group)
+                    end_idx = start_idx + remain_val
+                    arr_val[start_idx:end_idx] = [
+                        added_group_size + group_size_remain + 1
+                    ] * remain_val
+            df_dict[df_name] = arr_val
+    return df_dict
+
+
+def upload_csv_files(folder_path, group_size):
     # Get the parent folder name
     parent_folder_name = os.path.basename(folder_path)
+
+    files = {}
 
     # Iterate over the files in the folder
     for file_name in os.listdir(folder_path):
@@ -71,18 +141,23 @@ def upload_csv_files(folder_path):
             # Add a new column to the DataFrame
             df["audio_link"] = get_audio_link(df, "full_path", parent_folder_name)
             df["raw_text"] = df["text"]  # Example data for the new column
+            files[file_name] = df
 
-            # Convert the DataFrame back to a CSV string
-            modified_csv_content = df.to_csv(index=False)
-            csv_content_bytes = modified_csv_content.encode()
+    df_get_group = get_group(files, group_size)
 
-            # Define the folder name for Firebase Storage
-            folder_name = f"{parent_folder_name}"
+    for df_key, df in files.items():
+        df["group"] = df_get_group[df_key]
+        # Convert the DataFrame back to a CSV string
+        modified_csv_content = df.to_csv(index=False)
+        csv_content_bytes = modified_csv_content.encode()
 
-            # Upload the modified CSV content to Firebase Storage
-            blob = bucket.blob(f"csv_files/{folder_name}/{file_name}")
+        # Define the folder name for Firebase Storage
+        folder_name = f"{parent_folder_name}"
 
-            blob.upload_from_string(csv_content_bytes, content_type="text/csv")
+        # Upload the modified CSV content to Firebase Storage
+        blob = bucket.blob(f"csv_files/{folder_name}/{df_key}")
+
+        blob.upload_from_string(csv_content_bytes, content_type="text/csv")
 
 
 def name_csv_list(folder_path):
@@ -155,17 +230,6 @@ def get_audio_link(df, columns, folder_name):
     return audio_link
 
 
-def download_csv_file(destination_file_path):
-    # Download the CSV file from Firebase Storage
-    blob = bucket.blob(
-        f"csv_files/{destination_file_path}"
-    )  # Path to the CSV file in Firebase Storage
-    
-    blob.download_to_filename(f"D:/{destination_file_path}")
-
-    print("CSV file downloaded successfully.")
-
-
 def upload_audio_files(folder_path):
     # Get the parent folder name
     parent_folder_name = os.path.basename(folder_path)
@@ -181,9 +245,9 @@ def upload_audio_files(folder_path):
             blob = bucket.blob(bucket_path)
 
             token = uuid4()
-            
+
             metadata = {"firebaseStorageDownloadTokens": token}
-            
+
             # Assign the token as metadata
             blob.metadata = metadata
 
@@ -195,3 +259,14 @@ def upload_audio_files(folder_path):
             print(
                 f"{parent_folder_name}/{file_name} : Audio file uploaded successfully."
             )
+
+
+# def download_csv_file(destination_file_path):
+#     # Download the CSV file from Firebase Storage
+#     blob = bucket.blob(
+#         f"csv_files/{destination_file_path}"
+#     )  # Path to the CSV file in Firebase Storage
+
+#     blob.download_to_filename(f"C:/{destination_file_path}")
+
+#     print("CSV file downloaded successfully.")
