@@ -8,17 +8,6 @@ from database import (
     download_csv_file,
 )
 
-
-def convert_train_df():
-    train_df = st.session_state.train_df
-    return train_df.to_csv().encode("utf-8")
-
-
-def convert_val_df():
-    val_df = st.session_state.val_df
-    return val_df.to_csv().encode("utf-8")
-
-
 st.set_page_config(
     page_title="Editing CSV",
     page_icon="🧊",
@@ -38,7 +27,6 @@ def load_data_for_page(data_frame, page_number, rows_per_page, selected_set):
 def save_edited_csv(data_frame, csv_path):
     edited_csv = data_frame.to_csv(index=False)
     upload_edited_csv_file(edited_csv, csv_path)
-    st.toast(":green[Edited CSV file saved successfully.]", icon="🎉")
 
 
 def handle_selected_file():
@@ -56,6 +44,7 @@ def handle_next_page():
 
     save_edited_csv(t_df, f"{st.session_state.selected_csv_file}/train.csv")
     save_edited_csv(v_df, f"{st.session_state.selected_csv_file}/val.csv")
+    st.toast(":green[Edited CSV file saved successfully.]", icon="🎉")
     st.session_state.page_number += 1
 
 
