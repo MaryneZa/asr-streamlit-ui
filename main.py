@@ -22,7 +22,12 @@ def load_data_for_page(data_frame, page_number, rows_per_page, selected_set):
     end_index = (page_number + 1) * rows_per_page
     return df.iloc[start_index:end_index]
 
-
+def edit_status_done(selected_set):
+    st.session_state.concatenated_df.loc[st.session_state.concatenated_df["group"] == selected_set, "edit_status"] = True
+    handle_next_page()
+    st.session_state.clear()
+    # st.switch_page("main.py")
+    
 # Function to save edited CSV data
 def save_edited_csv(data_frame, csv_path):
     edited_csv = data_frame.to_csv(index=False)
@@ -32,6 +37,21 @@ def save_edited_csv(data_frame, csv_path):
 def handle_selected_file():
     st.session_state.clear()
 
+def handle_audio_quality_multi_speaker(index):
+    if st.session_state.concatenated_df is not None:
+        st.session_state.concatenated_df["multi_speaker"][index] = True
+
+def handle_audio_quality_loud_noise(index):
+    if st.session_state.concatenated_df is not None:
+        st.session_state.concatenated_df["loud_noise"][index] = True
+
+def handle_audio_quality_incomplete_sentence(index):
+    if st.session_state.concatenated_df is not None:
+        st.session_state.concatenated_df["incomplete_sentence"][index] = True
+
+def handle_audio_quality_unclear(index):
+    if st.session_state.concatenated_df is not None:
+        st.session_state.concatenated_df["unclear"][index] = True
 
 def handle_next_page():
 
@@ -47,10 +67,8 @@ def handle_next_page():
     st.toast(":green[Edited CSV file saved successfully.]", icon="🎉")
     st.session_state.page_number += 1
 
-
 def handle_previous_page():
     st.session_state.page_number -= 1
-
 
 def main():
 
@@ -141,14 +159,34 @@ def main():
             st.session_state.selected_set,
         )
         for index, row in selected_csv_data[[selected_csv]].iterrows():
-            st.write(f":blue[Index : {index}]")
+            st.write(f":blue[Index : {index%100}]")
             with st.container(border=True):
+                text_input_key = f"text-{index}-{selected_csv}"
 
-                st.audio(
-                    st.session_state.concatenated_df["audio_link"][index],
-                    format="audio/wav",
-                )
+                
+                with st.container(border=True):
+                    st.audio(
+                        st.session_state.concatenated_df["audio_link"][index],
+                        format="audio/wav",
+                    )
+                    audio_cols = st.columns(2)
+                    with audio_cols[0]:
+                        if st.toggle(":blue[มีเสียงพูดหลายคน]", key=f"{text_input_key}_m", value=st.session_state.concatenated_df["multi_speaker"][index]):
+                            st.session_state.concatenated_df["multi_speaker"][index] = True
 
+                            
+                        if st.toggle(":blue[มี noise ดัง]", key=f"{text_input_key}_l", value=st.session_state.concatenated_df["loud_noise"][index]):
+                            st.session_state.concatenated_df["loud_noise"][index] = True
+
+                    with audio_cols[1]:
+                        if st.toggle(":blue[ฟังไม่ออก/ไม่แน่ใจ]", key=f"{text_input_key}_u", value=st.session_state.concatenated_df["unclear"][index]):
+                            st.session_state.concatenated_df["unclear"][index] = True
+
+                    
+                        if st.toggle(":blue[มีเสียงต้นท้ายประโยค / พูดไม่ครบประโยค]", key=f"{text_input_key}_i", value=st.session_state.concatenated_df["incomplete_sentence"][index]):
+                            st.session_state.concatenated_df["incomplete_sentence"][index] = True
+
+                   
                 st.text_input(
                     f"Default {selected_csv}",
                     value=st.session_state.concatenated_df["raw_text"][index],
@@ -156,7 +194,6 @@ def main():
                     autocomplete="off",
                 )
 
-                text_input_key = f"text-{index}-{selected_csv}"
                 # Get the edited value from the user
                 edited_value = st.text_input(
                     f"Edit {selected_csv}",

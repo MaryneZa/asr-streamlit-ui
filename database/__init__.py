@@ -72,7 +72,6 @@ def download_csv_file(csv_file_path):
 def get_group(files, group):
     df_dict = {}
     remain_train = 0
-    remain_val = 0
     group_size = 0
     for df_name, df_value in files.items():
         len_df = len(df_value)
@@ -120,6 +119,7 @@ def get_group(files, group):
                     arr_val[start_idx:end_idx] = [
                         added_group_size + group_size_remain + 1
                     ] * remain_val
+                    
             df_dict[df_name] = arr_val
     return df_dict
 
@@ -137,10 +137,18 @@ def upload_csv_files(folder_path, group_size):
             file_path = os.path.join(folder_path, file_name)
 
             df = pd.read_csv(file_path)
-
+            len_df = len(df)
             # Add a new column to the DataFrame
             df["audio_link"] = get_audio_link(df, "full_path", parent_folder_name)
             df["raw_text"] = df["text"]  # Example data for the new column
+            
+            df["multi_speaker"] = [False] * len_df
+            df["loud_noise"] = [False] * len_df
+            df["unclear"] = [False] * len_df
+            df["incomplete_sentence"] = [False] * len_df
+            
+            df["edit_status"] = [False] * len_df
+            
             files[file_name] = df
 
     df_get_group = get_group(files, group_size)
