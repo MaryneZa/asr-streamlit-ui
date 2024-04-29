@@ -39,19 +39,19 @@ def handle_selected_file():
 
 def handle_audio_quality_multi_speaker(index):
     if st.session_state.concatenated_df is not None:
-        st.session_state.concatenated_df["multi_speaker"][index] = True
+        st.session_state.concatenated_df["multi_speaker"][index] = not st.session_state.concatenated_df["multi_speaker"][index]
 
 def handle_audio_quality_loud_noise(index):
     if st.session_state.concatenated_df is not None:
-        st.session_state.concatenated_df["loud_noise"][index] = True
+        st.session_state.concatenated_df["loud_noise"][index] = not st.session_state.concatenated_df["loud_noise"][index]
 
 def handle_audio_quality_incomplete_sentence(index):
     if st.session_state.concatenated_df is not None:
-        st.session_state.concatenated_df["incomplete_sentence"][index] = True
+        st.session_state.concatenated_df["incomplete_sentence"][index] = not st.session_state.concatenated_df["incomplete_sentence"][index]
 
 def handle_audio_quality_unclear(index):
     if st.session_state.concatenated_df is not None:
-        st.session_state.concatenated_df["unclear"][index] = True
+        st.session_state.concatenated_df["unclear"][index] = not st.session_state.concatenated_df["unclear"][index] 
 
 def handle_next_page():
 
