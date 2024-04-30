@@ -266,11 +266,10 @@ def main():
                     )
 
                     if edited_value != row[selected_csv]:
-                        with st.spinner("Updating..."):
-                            st.session_state.concatenated_df[selected_csv][
-                                index
-                            ] = edited_value
-                            st.success(" Edited Successfully!")
+                        st.session_state.concatenated_df[selected_csv][
+                            index
+                        ] = edited_value
+                        st.success(" Edited Successfully!")
 
                 st.divider()
 
