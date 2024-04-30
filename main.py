@@ -143,7 +143,7 @@ def main():
             if "page_number" not in st.session_state:
                 st.session_state.page_number = 1
 
-            rows_per_page = 40
+            rows_per_page = 10
             total_rows = len(
                 st.session_state.concatenated_df[
                     st.session_state.concatenated_df["group"] == st.session_state.selected_set
