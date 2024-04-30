@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
+import streamlit.components.v1 as components
 import io
+
 from database import (
     get_csv_file,
     name_csv_list,
@@ -12,6 +14,14 @@ st.set_page_config(
     page_icon="🧊",
     layout="centered",
 )
+
+js = """
+<script>
+    var body = window.parent.document.querySelector(".main");
+    console.log(body);
+    body.scrollTop = 0;
+</script>
+"""
 
 
 def load_data_for_page(data_frame, page_number, rows_per_page, selected_set):
@@ -42,7 +52,6 @@ def handle_selected_file():
 
 
 def handle_next_page():
-
     # Get the length of the original DataFrames
     len_df = len(st.session_state.train_df)
 
@@ -54,6 +63,10 @@ def handle_next_page():
     save_edited_csv(v_df, f"{st.session_state.selected_csv_file}/val.csv")
     st.toast(":green[Edited CSV file saved successfully.]", icon="🎉")
     st.session_state.page_number += 1
+    st.session_state.counter += 1
+    # Scroll to the top of the page by setting query parameters
+    # Execute JavaScript to scroll to the top of the page
+    # st.write('<script>window.scrollTo({top: 0, behavior: "smooth"});</script>', unsafe_allow_html=True)
 
 
 def get_group_numbers_with_edit_status_true(data_frame):
@@ -68,6 +81,7 @@ def get_group_numbers_with_edit_status_true(data_frame):
 
 def handle_previous_page():
     st.session_state.page_number -= 1
+    st.session_state.counter += 1
 
 
 def main():
@@ -147,9 +161,21 @@ def main():
             if selected_set and "selected_set" not in st.session_state:
                 st.session_state.selected_set = selected_set[0]
 
+            if "counter" not in st.session_state:
+                st.session_state.counter = 1
+
+            components.html(
+                f"""
+                    <p>{st.session_state.counter}</p>
+                    <script>
+                        window.parent.document.querySelector('section.main').scrollTo(0, 0);
+                    </script>
+                """,
+                height=0,
+            )
+
     if "selected_set" in st.session_state:
         if selected_csv_file and st.session_state.selected_set not in done_set:
-
             selected_csv = "text"
 
             if "page_number" not in st.session_state:
@@ -173,6 +199,7 @@ def main():
                 rows_per_page,
                 st.session_state.selected_set,
             )
+
             for index, row in selected_csv_data[[selected_csv]].iterrows():
                 st.write(f":blue[Index : {index%100}]")
                 with st.container(border=True):
@@ -180,7 +207,7 @@ def main():
 
                     with st.container(border=True):
                         st.audio(
-                            st.session_state.concatenated_df["audio_link"][index],
+                            st.session_state.concatenated_df.loc[index, "audio_link"],
                             format="audio/wav",
                         )
                         audio_cols = st.columns(2)
@@ -189,70 +216,70 @@ def main():
                             multi_speaker = st.toggle(
                                 ":blue[มีเสียงพูดหลายคน]",
                                 key=f"{text_input_key}_m",
-                                value=st.session_state.concatenated_df["multi_speaker"][
-                                    index
+                                value=st.session_state.concatenated_df.loc[
+                                    index, "multi_speaker"
                                 ],
                             )
                             if multi_speaker:
-                                st.session_state.concatenated_df["multi_speaker"][
-                                    index
+                                st.session_state.concatenated_df.loc[
+                                    index, "multi_speaker"
                                 ] = True
                             else:
-                                st.session_state.concatenated_df["multi_speaker"][
-                                    index
+                                st.session_state.concatenated_df.loc[
+                                    index, "multi_speaker"
                                 ] = False
 
                             loud_noise = st.toggle(
                                 ":blue[มี noise ดัง]",
                                 key=f"{text_input_key}_l",
-                                value=st.session_state.concatenated_df["loud_noise"][
-                                    index
+                                value=st.session_state.concatenated_df.loc[
+                                    index, "loud_noise"
                                 ],
                             )
                             if loud_noise:
-                                st.session_state.concatenated_df["loud_noise"][
-                                    index
+                                st.session_state.concatenated_df.loc[
+                                    index, "loud_noise"
                                 ] = True
                             else:
-                                st.session_state.concatenated_df["loud_noise"][
-                                    index
+                                st.session_state.concatenated_df.loc[
+                                    index, "loud_noise"
                                 ] = False
                         with audio_cols[1]:
                             unclear = st.toggle(
                                 ":blue[ฟังไม่ออก/ไม่แน่ใจ]",
                                 key=f"{text_input_key}_u",
-                                value=st.session_state.concatenated_df["unclear"][
-                                    index
+                                value=st.session_state.concatenated_df.loc[
+                                    index, "unclear"
                                 ],
                             )
                             if unclear:
-                                st.session_state.concatenated_df["unclear"][
-                                    index
+                                st.session_state.concatenated_df.loc[
+                                    index, "unclear"
                                 ] = True
                             else:
-                                st.session_state.concatenated_df["unclear"][
-                                    index
+                                st.session_state.concatenated_df.loc[
+                                    index, "unclear"
                                 ] = False
 
                             incomplete_sentence = st.toggle(
                                 ":blue[มีเสียงต้นท้ายประโยค / พูดไม่ครบประโยค]",
                                 key=f"{text_input_key}_i",
-                                value=st.session_state.concatenated_df[
-                                    "incomplete_sentence"
-                                ][index],
+                                value=st.session_state.concatenated_df.loc[
+                                    index, "incomplete_sentence"
+                                ],
                             )
                             if incomplete_sentence:
-                                st.session_state.concatenated_df["incomplete_sentence"][
-                                    index
+                                st.session_state.concatenated_df.loc[
+                                    index, "incomplete_sentence"
                                 ] = True
                             else:
-                                st.session_state.concatenated_df["incomplete_sentence"][
-                                    index
+                                st.session_state.concatenated_df.loc[
+                                    index, "incomplete_sentence"
                                 ] = False
 
                     st.text_input(
                         f"Default {selected_csv}",
-                        value=st.session_state.concatenated_df["raw_text"][index],
+                        value=st.session_state.concatenated_df.loc[index, "raw_text"],
                         disabled=True,
                         autocomplete="off",
                     )
@@ -266,9 +293,9 @@ def main():
                     )
 
                     if edited_value != row[selected_csv]:
-                        st.session_state.concatenated_df[selected_csv][
-                            index
-                        ] = edited_value
+                        st.session_state.concatenated_df.loc[index, selected_csv] = (
+                            edited_value
+                        )
                         st.success(" Edited Successfully!")
 
                 st.divider()
@@ -292,6 +319,7 @@ def main():
             with cols[2]:
                 if st.session_state.page_number <= total_pages:
                     st.button("Next Page", type="primary", on_click=handle_next_page)
+
                 else:
                     st.button(
                         label=":blue[Editing Done]",
