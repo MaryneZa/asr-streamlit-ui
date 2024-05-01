@@ -216,10 +216,10 @@ def get_audio_link(df, columns, folder_name):
         # Get a blob reference to the audio file
         blob = bucket.get_blob(bucket_path)
 
-        # # Check if the blob exists
-        # if not blob.exists():
-        #     audio_link.append(None)
-        #     continue
+        # Check if the blob exists
+        if not blob.exists():
+            audio_link.append(None)
+            continue
 
         # Fetches object metadata
         metadata = blob.metadata
@@ -269,28 +269,24 @@ def upload_audio_files(folder_path):
             )
 
 
-# def download_csv_file(destination_file_path):
-#     # Download the CSV file from Firebase Storage
-#     blob = bucket.blob(
-#         f"csv_files/{destination_file_path}"
-#     )  # Path to the CSV file in Firebase Storage
+def download_csv_file(remote_file_path, local_destination_folder):
+    """
+    Downloads a CSV file from Firebase Storage to the specified local folder.
 
-#     blob.download_to_filename(f"D:/work")
-
-#     print("CSV file downloaded successfully.")
-
-
-def download_csv_file(destination_file_path):
+    Parameters:
+        remote_file_path (str): The path of the CSV file on Firebase Storage.
+        local_destination_folder (str): The local folder where the CSV file will be downloaded.
+    """
     # Download the CSV file from Firebase Storage
     blob = bucket.blob(
-        f"csv_files/{destination_file_path}"
+        f"csv_files/{remote_file_path}"
     )  # Path to the CSV file in Firebase Storage
 
-    # Adjust the destination file path to include the original file name
-    # Split the destination_file_path to get the file name
-    file_name = ("_").join(destination_file_path.split("/"))
+    # Split the remote_file_path to get the file name
+    file_name = ("_").join(remote_file_path.split("/"))
+    
     # Concatenate the destination directory and file name
-    local_file_path = f"D:/work/{file_name}"
+    local_file_path = f"{local_destination_folder}/{file_name}"
 
     # Download the file to the correct local directory
     blob.download_to_filename(local_file_path)
