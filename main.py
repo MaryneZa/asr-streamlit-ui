@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import streamlit.components.v1 as components
 import io
-
+import time
 from database import (
     get_csv_file,
     name_csv_list,
@@ -200,7 +200,6 @@ def main():
                         )
                         audio_cols = st.columns(2)
                         with audio_cols[0]:
-
                             multi_speaker = st.toggle(
                                 ":blue[มีเสียงพูดหลายคน]",
                                 key=f"{text_input_key}_m",
@@ -208,9 +207,16 @@ def main():
                                     index, "multi_speaker"
                                 ],
                             )
-                            st.session_state.concatenated_df.loc[
-                                index, "multi_speaker"
-                            ] = multi_speaker
+                            if (
+                                multi_speaker
+                                != st.session_state.concatenated_df.loc[
+                                    index, "multi_speaker"
+                                ]
+                            ):
+                                st.session_state.concatenated_df.loc[
+                                    index, "multi_speaker"
+                                ] = multi_speaker
+                                st.experimental_rerun()
 
                             loud_noise = st.toggle(
                                 ":blue[มี noise ดัง]",
@@ -219,9 +225,16 @@ def main():
                                     index, "loud_noise"
                                 ],
                             )
-                            st.session_state.concatenated_df.loc[
-                                index, "loud_noise"
-                            ] = loud_noise
+                            if (
+                                loud_noise
+                                != st.session_state.concatenated_df.loc[
+                                    index, "loud_noise"
+                                ]
+                            ):
+                                st.session_state.concatenated_df.loc[
+                                    index, "loud_noise"
+                                ] = loud_noise
+                                st.experimental_rerun()
 
                         with audio_cols[1]:
                             unclear = st.toggle(
@@ -231,9 +244,16 @@ def main():
                                     index, "unclear"
                                 ],
                             )
-                            st.session_state.concatenated_df.loc[index, "unclear"] = (
+                            if (
                                 unclear
-                            )
+                                != st.session_state.concatenated_df.loc[
+                                    index, "unclear"
+                                ]
+                            ):
+                                st.session_state.concatenated_df.loc[
+                                    index, "unclear"
+                                ] = unclear
+                                st.experimental_rerun()
 
                             incomplete_sentence = st.toggle(
                                 ":blue[มีเสียงต้นท้ายประโยค / พูดไม่ครบประโยค]",
@@ -242,9 +262,16 @@ def main():
                                     index, "incomplete_sentence"
                                 ],
                             )
-                            st.session_state.concatenated_df.loc[
-                                index, "incomplete_sentence"
-                            ] = incomplete_sentence
+                            if (
+                                incomplete_sentence
+                                != st.session_state.concatenated_df.loc[
+                                    index, "incomplete_sentence"
+                                ]
+                            ):
+                                st.session_state.concatenated_df.loc[
+                                    index, "incomplete_sentence"
+                                ] = incomplete_sentence
+                                st.experimental_rerun()
 
                     st.text_input(
                         f"Default {selected_csv}",
@@ -256,16 +283,23 @@ def main():
                     # Get the edited value from the user
                     edited_value = st.text_input(
                         f"Edit {selected_csv}",
-                        value=row[selected_csv],
+                        value=st.session_state.concatenated_df.loc[index, selected_csv],
                         key=text_input_key,
                         autocomplete="off",
                     )
 
-                    if edited_value != row[selected_csv]:
+                    # Check if the value has changed
+                    if (
+                        edited_value
+                        != st.session_state.concatenated_df.loc[index, selected_csv]
+                    ):
+                        # Update the value in the DataFrame
                         st.session_state.concatenated_df.loc[index, selected_csv] = (
                             edited_value
                         )
-                        st.success(" Edited Successfully!")
+                        st.success("Edited Successfully!")
+                        time.sleep(1)
+                        st.experimental_rerun()
 
                 st.divider()
 
