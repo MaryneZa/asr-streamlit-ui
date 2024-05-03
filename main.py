@@ -50,13 +50,16 @@ def handle_next_page():
     # Get the length of the original DataFrames
     len_df = st.session_state.len_train_df
     csv_name = st.session_state.selected_csv_file
+    
     # Split the concatenated DataFrame back into DataFrames with the same length
     t_df = st.session_state.concatenated_df.iloc[:len_df]
     v_df = st.session_state.concatenated_df.iloc[len_df:]
 
     save_edited_csv(t_df, f"{csv_name}/train.csv")
     save_edited_csv(v_df, f"{csv_name}/val.csv")
+    
     st.toast(":green[Edited CSV file saved successfully.]", icon="🎉")
+    
     st.session_state.page_number += 1
     st.session_state.counter += 1
 
@@ -76,11 +79,11 @@ def handle_previous_page():
     st.session_state.counter += 1
 
 
-def load_data(csv_file):
-    train_csv, _ = get_csv_file(csv_file, "train.csv")
+def load_concat_data(csv_file):
+    train_csv = get_csv_file(csv_file, "train.csv")
     train_data = pd.read_csv(io.BytesIO(train_csv))
 
-    val_csv, _ = get_csv_file(csv_file, "val.csv")
+    val_csv = get_csv_file(csv_file, "val.csv")
     val_data = pd.read_csv(io.BytesIO(val_csv))
 
     concatenated_df = pd.concat([train_data, val_data], ignore_index=True)
@@ -121,7 +124,7 @@ def main():
             st.session_state.selected_csv_file = selected_csv_file
             if "concatenated_df" not in st.session_state:
                 st.session_state.concatenated_df, st.session_state.len_train_df = (
-                    load_data(st.session_state.selected_csv_file)
+                    load_concat_data(st.session_state.selected_csv_file)
                 )
 
             highest_value = st.session_state.concatenated_df["group"].max()
