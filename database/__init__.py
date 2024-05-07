@@ -4,7 +4,10 @@ from firebase_admin import credentials, storage
 import pandas as pd
 import os
 from uuid import uuid4
-from io import StringIO
+import math
+
+# from io import StringIO
+
 
 # serviceAccount = os.path.join(os.path.dirname(__file__), ".", "serviceAccount.json")
 
@@ -36,6 +39,21 @@ bucket = storage.bucket()
 
 
 def upload_csv_files(folder_path, group_size):
+    """
+    Upload CSV files from a local folder to Firebase Storage after modifying them.
+
+    Args:
+        folder_path (str): The path of the local folder containing the CSV files.
+        group_size (int): The size of each group for grouping CSV files.
+
+    Returns:
+        None
+
+    Raises:
+        FileNotFoundError: If the specified folder path does not exist.
+        ValueError: If the folder_path is None or invalid, or if group_size is not positive.
+        IOError: If there are issues reading, modifying, or uploading the CSV files to Firebase Storage.
+    """
     try:
         if not os.path.isdir(folder_path):
             raise FileNotFoundError(f"The folder path '{folder_path}' does not exist.")
@@ -88,6 +106,20 @@ def upload_csv_files(folder_path, group_size):
 
 
 def upload_edited_csv_file(csv_content, csv_file_path):
+    """
+    Upload edited CSV content to Firebase Storage.
+
+    Args:
+        csv_content (str): The edited CSV content as a string.
+        csv_file_path (str): The path of the CSV file on Firebase Storage.
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If the provided CSV content or file path is None or empty.
+        IOError: If there are issues uploading the CSV content to Firebase Storage.
+    """
     try:
         bucket_path = f"csv_files/{csv_file_path}"
 
@@ -113,6 +145,20 @@ def upload_edited_csv_file(csv_content, csv_file_path):
 
 
 def upload_audio_files(folder_path):
+    """
+    Upload audio files (.wav) from a local folder to Firebase Storage.
+
+    Args:
+        folder_path (str): The path of the local folder containing the audio files.
+
+    Returns:
+        None
+
+    Raises:
+        FileNotFoundError: If the specified folder path does not exist.
+        ValueError: If the folder_path is None or invalid.
+        IOError: If there are issues uploading the audio files to Firebase Storage.
+    """
     try:
         if not os.path.isdir(folder_path):
             raise FileNotFoundError(f"The folder path '{folder_path}' does not exist.")
@@ -149,56 +195,36 @@ def upload_audio_files(folder_path):
 
 
 def get_group(files, group):
+    """Split files into groups based on group size.
+
+    Args:
+        files (dict): A dictionary containing file names as keys and DataFrames as values.
+        group (int): The size of each group.
+
+    Raises:
+        TypeError: If files is not a dictionary or group is not an integer.
+        ValueError: If group is not positive.
+
+    Returns:
+        dict: A dictionary containing file names as keys and grouped DataFrames as values.
+    """
     try:
+        len_train = len(files["train.csv"])
+        len_val = len(files["val.csv"])
+        arr = [0] * (len_train + len_val)
+
+        # Calculate total number of groups and assign group numbers to the array
+        total_group = math.ceil(len(arr) / group)
+        for i in range(total_group):
+            start_idx = i * group
+            end_idx = min(start_idx + group, len(arr))
+            arr[start_idx:end_idx] = [i + 1] * (end_idx - start_idx)
+
+        # Split array into train and val DataFrames
         df_dict = {}
-        remain_train = 0
-        group_size = 0
-        for df_name, df_value in files.items():
-            len_df = len(df_value)
-            remain = len_df % group
-            if not group_size:  # check if its the first file
-                arr_train = [0] * len_df
-                group_size = len_df // group
-                if group_size:  # check if its more than group value
-                    for i in range(group_size):
-                        start_idx = i * group
-                        end_idx = start_idx + group
-                        arr_train[start_idx:end_idx] = [i + 1] * group
-                if remain:
-                    remain_train = remain
-                    start_idx = group_size * group
-                    end_idx = start_idx + remain
-                    arr_train[start_idx:end_idx] = [group_size + 1] * remain_train
-                df_dict[df_name] = arr_train
-            else:  # check the following files
-                added_group_size = group_size + 1
-                total_remain = len_df + remain_train
-                arr_val = [added_group_size] * len_df
-                if total_remain <= group:
-                    pass
-                else:
-                    fraction = group - remain_train
+        df_dict["train.csv"] = pd.DataFrame(arr[:len_train], columns=["group"])
+        df_dict["val.csv"] = pd.DataFrame(arr[len_train:], columns=["group"])
 
-                    group_size_remain = (len_df - fraction) // group
-
-                    remain_val = (len_df - fraction) % group
-
-                    if group_size_remain:
-                        for i in range(group_size_remain):
-                            start_idx = fraction + (i * group)
-                            end_idx = start_idx + group
-                            arr_val[start_idx:end_idx] = [
-                                (added_group_size) + (i + 1)
-                            ] * group
-
-                    if remain_val:
-                        start_idx = fraction + (group_size_remain * group)
-                        end_idx = start_idx + remain_val
-                        arr_val[start_idx:end_idx] = [
-                            added_group_size + group_size_remain + 1
-                        ] * remain_val
-
-                df_dict[df_name] = arr_val
         return df_dict
 
     except Exception as e:
@@ -206,6 +232,19 @@ def get_group(files, group):
 
 
 def name_csv_list(folder_path):
+    """
+    List the names of CSV files in a specified folder path on Firebase Storage.
+
+    Args:
+        folder_path (str): The path of the folder containing the CSV files on Firebase Storage.
+
+    Returns:
+        set: A set containing the names of CSV files found in the specified folder.
+
+    Raises:
+        ValueError: If the folder_path is None or invalid.
+        IOError: If there are issues listing the CSV files.
+    """
     try:
         # List all files in the specified folder
         blobs = bucket.list_blobs(prefix=f"{folder_path}")
@@ -230,6 +269,21 @@ def name_csv_list(folder_path):
 
 
 def get_csv_file(folder_path, file):
+    """
+    Get the content of a CSV file from Firebase Storage.
+
+    Args:
+        folder_path (str): The path of the folder containing the CSV file on Firebase Storage.
+        file (str): The name of the CSV file to retrieve.
+
+    Returns:
+        tuple or bytes or None: If successful, returns a tuple containing the file content as bytes,
+            an informative message, and any additional data. If the file does not exist, returns None.
+
+    Raises:
+        ValueError: If the folder_path is None.
+        IOError: If there are issues retrieving the CSV file.
+    """
     try:
         if folder_path is None:
             return None, "Folder path is None.", None
@@ -250,6 +304,20 @@ def get_csv_file(folder_path, file):
 
 
 def get_audio_link(df, columns, folder_name):
+    """Get download links for audio files stored in a cloud bucket.
+
+    Args:
+        df (DataFrame): DataFrame containing audio file information.
+        columns (str or list of str): Name(s) of the column(s) containing the audio file paths.
+        folder_name (str): Name of the folder where audio files are stored in the bucket.
+
+    Raises:
+        KeyError: If the specified column(s) do not exist in the DataFrame.
+        ValueError: If the specified folder name is invalid or if the DataFrame is empty.
+
+    Returns:
+        list: A list containing download links for each audio file.
+    """
     try:
         audio_link = []
         for index, row in df.iterrows():
@@ -291,11 +359,19 @@ def get_audio_link(df, columns, folder_name):
 
 def download_csv_file(remote_file_path, local_destination_folder):
     """
-    Downloads a CSV file from Firebase Storage to the specified local folder.
+    Download a CSV file from Firebase Storage to the specified local folder.
 
     Parameters:
         remote_file_path (str): The path of the CSV file on Firebase Storage.
         local_destination_folder (str): The local folder where the CSV file will be downloaded.
+
+    Raises:
+        ValueError: If the remote file path or local destination folder is invalid.
+        FileNotFoundError: If the CSV file does not exist in the specified remote location.
+        IOError: If there are issues downloading the CSV file.
+
+    Returns:
+        None
     """
     try:
         # Download the CSV file from Firebase Storage

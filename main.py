@@ -17,77 +17,216 @@ st.set_page_config(
 
 
 def load_data_for_page(data_frame, page_number, rows_per_page, selected_set):
-    df = data_frame[data_frame["group"] == selected_set].iloc[:]
+    """
+    Load data from a DataFrame for a specific page.
 
-    start_index = page_number * rows_per_page
-    end_index = (page_number + 1) * rows_per_page
+    Args:
+        data_frame (DataFrame): The DataFrame containing the data to be loaded.
+        page_number (int): The page number to load.
+        rows_per_page (int): The number of rows per page.
+        selected_set (int): The selected set/group number.
 
-    return df.iloc[start_index:end_index]
+    Returns:
+        DataFrame: A subset of the DataFrame containing data for the specified page.
+
+    Raises:
+        ValueError: If page_number or rows_per_page is negative, or if selected_set is not found in the DataFrame.
+    """
+    try:
+        # Filter the DataFrame based on the selected set/group
+        df = data_frame[data_frame["group"] == selected_set].iloc[:]
+
+        # Calculate start and end indices for the specified page
+        start_index = page_number * rows_per_page
+        end_index = (page_number + 1) * rows_per_page
+
+        # Return the subset of the DataFrame for the specified page
+        return df.iloc[start_index:end_index]
+    
+    except Exception as e:
+        print("An error occurred:", e)
+
 
 
 def edit_status_done(selected_set):
-    st.session_state.concatenated_df.loc[
-        st.session_state.concatenated_df["group"] == selected_set, "edit_status"
-    ] = True
+    """
+    Mark the edit status as done for a selected set/group and perform additional actions.
 
-    handle_next_page()
+    Args:
+        selected_set (int): The selected set/group number.
 
-    st.session_state.clear()
+    Returns:
+        None
+
+    Raises:
+        ValueError: If selected_set is not found in the session DataFrame.
+    """
+    try:
+        # Mark the edit status as done for the selected set/group
+        st.session_state.concatenated_df.loc[
+            st.session_state.concatenated_df["group"] == selected_set, "edit_status"
+        ] = True
+
+        handle_next_page()
+
+        # Clear session state 
+        st.session_state.clear()
+    
+    except Exception as e:
+        print("An error occurred:", e)
 
 
-# Function to save edited CSV data
+
 def save_edited_csv(data_frame, csv_path):
-    edited_csv = data_frame.to_csv(index=False)
+    """
+    Save edited CSV data to Firebase Storage.
 
-    upload_edited_csv_file(edited_csv, csv_path)
+    Args:
+        data_frame (DataFrame): The DataFrame containing the edited CSV data.
+        csv_path (str): The path of the CSV file on Firebase Storage.
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If the CSV path is None or empty.
+        IOError: If there are issues saving the edited CSV data to Firebase Storage.
+    """
+    try:
+        edited_csv = data_frame.to_csv(index=False)
+
+        upload_edited_csv_file(edited_csv, csv_path)
+    
+    except Exception as e:
+        print("An error occurred:", e)
+
 
 
 def handle_selected_file():
-    st.session_state.clear()
+    """
+    Handle the selection of a file by clearing the session state.
+
+    Returns:
+        None
+    """
+    try:
+        # Clear session state
+        st.session_state.clear()
+    
+    except Exception as e:
+        print("An error occurred:", e)
+
 
 
 def handle_next_page():
-    # Get the length of the original DataFrames
-    len_df = st.session_state.len_train_df
-    csv_name = st.session_state.selected_csv_file
-    
-    # Split the concatenated DataFrame back into DataFrames with the same length
-    t_df = st.session_state.concatenated_df.iloc[:len_df]
-    v_df = st.session_state.concatenated_df.iloc[len_df:]
+    """
+    Handle the transition to the next page by saving edited CSV data and updating session state.
 
-    save_edited_csv(t_df, f"{csv_name}/train.csv")
-    save_edited_csv(v_df, f"{csv_name}/val.csv")
+    Returns:
+        None
+    """
+    try:
+        # Get the length of the original DataFrames
+        len_df = st.session_state.len_train_df
+        csv_name = st.session_state.selected_csv_file
+
+        # Split the concatenated DataFrame back into DataFrames with the same length
+        t_df = st.session_state.concatenated_df.iloc[:len_df]
+        v_df = st.session_state.concatenated_df.iloc[len_df:]
+
+        # Save edited CSV files for train and val DataFrames
+        save_edited_csv(t_df, f"{csv_name}/train.csv")
+        save_edited_csv(v_df, f"{csv_name}/val.csv")
+
+        # Display a success toast message
+        st.toast(":green[Edited CSV files saved successfully.]", icon="🎉")
+
+        # Update session state variables
+        st.session_state.page_number += 1
+        st.session_state.counter += 1
     
-    st.toast(":green[Edited CSV file saved successfully.]", icon="🎉")
-    
-    st.session_state.page_number += 1
-    st.session_state.counter += 1
+    except Exception as e:
+        print("An error occurred:", e)
+
 
 
 def get_group_numbers_with_edit_status_true(data_frame):
-    # Filter the DataFrame to include only rows where edit_status is True
-    df_edit_true = data_frame[data_frame["edit_status"] == True]
+    """
+    Get group numbers where the edit_status is True in the DataFrame.
 
-    # Get the unique values from the group column
-    group_numbers_edit_true = df_edit_true["group"].unique()
+    Args:
+        data_frame (DataFrame): The DataFrame containing the data.
 
-    return group_numbers_edit_true
+    Returns:
+        numpy.ndarray: An array of unique group numbers with edit_status set to True.
+
+    Raises:
+        ValueError: If the DataFrame is empty or if the column edit_status is not found.
+    """
+    try:
+        # Filter the DataFrame to include only rows where edit_status is True
+        df_edit_true = data_frame[data_frame["edit_status"] == True]
+
+        # Get the unique values from the group column
+        group_numbers_edit_true = df_edit_true["group"].unique()
+
+        return group_numbers_edit_true
+    
+    except Exception as e:
+        print("An error occurred:", e)
+
 
 
 def handle_previous_page():
-    st.session_state.page_number -= 1
-    st.session_state.counter += 1
+    """
+    Handle the transition to the previous page by updating session state.
+
+    Returns:
+        None
+    """
+    try:
+        # Update session state variables
+        st.session_state.page_number -= 1
+        st.session_state.counter += 1
+    
+    except Exception as e:
+        print("An error occurred:", e)
+
 
 
 def load_concat_data(csv_file):
-    train_csv = get_csv_file(csv_file, "train.csv")
-    train_data = pd.read_csv(io.BytesIO(train_csv))
+    """
+    Load and concatenate data from train and val CSV files.
 
-    val_csv = get_csv_file(csv_file, "val.csv")
-    val_data = pd.read_csv(io.BytesIO(val_csv))
+    Args:
+        csv_file (str): The name of the CSV file containing train and val data.
 
-    concatenated_df = pd.concat([train_data, val_data], ignore_index=True)
-    return concatenated_df, len(train_data)
+    Returns:
+        DataFrame: Concatenated DataFrame containing train and val data.
+        int: Length of the train data.
+
+    Raises:
+        ValueError: If the CSV file name is invalid or if train or val data is not found.
+        IOError: If there are issues loading or concatenating the CSV data.
+    """
+    try:
+        # Get train data from CSV
+        train_csv = get_csv_file(csv_file, "train.csv")
+        train_data = pd.read_csv(io.BytesIO(train_csv))
+
+        # Get val data from CSV
+        val_csv = get_csv_file(csv_file, "val.csv")
+        val_data = pd.read_csv(io.BytesIO(val_csv))
+
+        # Concatenate train and val data
+        concatenated_df = pd.concat([train_data, val_data], ignore_index=True)
+
+        # Return concatenated DataFrame and length of train data
+        return concatenated_df, len(train_data)
+    
+    except Exception as e:
+        print("An error occurred:", e)
+
 
 
 def main():
