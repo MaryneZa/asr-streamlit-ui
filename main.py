@@ -165,7 +165,6 @@ def get_group_numbers_with_edit_status_true(csv_group_list):
         for file in csv_group_list:
             csv_file = get_csv_file(st.session_state.selected_csv_file, file)
             df = pd.read_csv(io.BytesIO(csv_file))
-            # df_edit_true = data_frame[data_frame["edit_status"] == True]
 
             # Get the unique values from the group column
             group_numbers_edit_true = df["edit_status"].unique()
@@ -322,7 +321,7 @@ def main():
             if "page_number" not in st.session_state:
                 st.session_state.page_number = 1
 
-            rows_per_page = 2
+            rows_per_page = 10
             total_rows = len(
                 st.session_state.concatenated_df[
                     st.session_state.concatenated_df["group"]
