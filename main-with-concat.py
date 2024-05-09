@@ -6,7 +6,6 @@ import time
 from database import (
     get_csv_file,
     name_csv_list,
-    name_csv_group_list,
     upload_edited_csv_file,
 )
 
@@ -36,6 +35,7 @@ def load_data_for_page(data_frame, page_number, rows_per_page, selected_set):
     try:
         # Filter the DataFrame based on the selected set/group
         df = data_frame[data_frame["group"] == selected_set].iloc[:]
+        st.sidebar.write(df)
 
         # Calculate start and end indices for the specified page
         start_index = page_number * rows_per_page
@@ -67,7 +67,6 @@ def edit_status_done(selected_set):
         st.session_state.concatenated_df.loc[
             st.session_state.concatenated_df["group"] == selected_set, "edit_status"
         ] = True
-        
 
         handle_next_page()
 
@@ -128,11 +127,17 @@ def handle_next_page():
         None
     """
     try:
-
+        # Get the length of the original DataFrames
+        len_df = st.session_state.len_train_df
         csv_name = st.session_state.selected_csv_file
-        df_group = st.session_state.concatenated_df[st.session_state.concatenated_df["group"] == st.session_state.selected_set].iloc[:]
-        save_edited_csv(df_group, f"{csv_name}/group_{st.session_state.selected_set}.csv")
-        
+
+        # Split the concatenated DataFrame back into DataFrames with the same length
+        t_df = st.session_state.concatenated_df.iloc[:len_df]
+        v_df = st.session_state.concatenated_df.iloc[len_df:]
+
+        # Save edited CSV files for train and val DataFrames
+        save_edited_csv(t_df, f"{csv_name}/train.csv")
+        save_edited_csv(v_df, f"{csv_name}/val.csv")
 
         # Display a success toast message
         st.toast(":green[Edited CSV files saved successfully.]", icon="🎉")
@@ -146,7 +151,7 @@ def handle_next_page():
 
 
 
-def get_group_numbers_with_edit_status_true(csv_group_list):
+def get_group_numbers_with_edit_status_true(data_frame):
     """
     Get group numbers where the edit_status is True in the DataFrame.
 
@@ -160,20 +165,13 @@ def get_group_numbers_with_edit_status_true(csv_group_list):
         ValueError: If the DataFrame is empty or if the column edit_status is not found.
     """
     try:
-        num = []
         # Filter the DataFrame to include only rows where edit_status is True
-        for file in csv_group_list:
-            csv_file = get_csv_file(st.session_state.selected_csv_file, file)
-            df = pd.read_csv(io.BytesIO(csv_file))
-            # df_edit_true = data_frame[data_frame["edit_status"] == True]
+        df_edit_true = data_frame[data_frame["edit_status"] == True]
 
-            # Get the unique values from the group column
-            group_numbers_edit_true = df["edit_status"].unique()
-            if bool(group_numbers_edit_true[0]) :
-                file = file.split(".csv")[0]
-                num.append(int(file.split("_")[-1]))
-                print("HI")
-        return num
+        # Get the unique values from the group column
+        group_numbers_edit_true = df_edit_true["group"].unique()
+
+        return group_numbers_edit_true
     
     except Exception as e:
         print("An error occurred:", e)
@@ -264,65 +262,58 @@ def main():
     with cols_file[1]:
         if selected_csv_file:
             st.session_state.selected_csv_file = selected_csv_file
-            
-            csv_group_list = name_csv_group_list(f"csv_files/{st.session_state.selected_csv_file}")            
-            
             if "concatenated_df" not in st.session_state:
                 st.session_state.concatenated_df, st.session_state.len_train_df = (
                     load_concat_data(st.session_state.selected_csv_file)
                 )
-                # st.sidebar.write("Hi")
+                st.sidebar.write("Hi")
 
-            
             highest_value = st.session_state.concatenated_df["group"].max()
 
-            if "done_set" not in st.session_state:
-                st.session_state.done_set = get_group_numbers_with_edit_status_true(
-                    csv_group_list
-                )
-                
-            if "done_set" in st.session_state:
-                
-                set = list(range(1, highest_value + 1))
+            done_set = get_group_numbers_with_edit_status_true(
+                st.session_state.concatenated_df
+            )
 
-                # Generate the list of options with labels indicating whether they are done or not
-                options = [
-                    (num, f"{num} (done)") if num in st.session_state.done_set else (num, num) for num in set
-                ]
+            set = list(range(1, highest_value + 1))
 
-                # Set up the selectbox with the modified list of options
-                selected_set = st.selectbox(
-                    ":blue[Select dataset]",
-                    options,
-                    index=None,
-                    format_func=lambda x: x[1],
-                    on_change=handle_selected_file,
-                )
+            # Generate the list of options with labels indicating whether they are done or not
+            options = [
+                (num, f"{num} (done)") if num in done_set else (num, num) for num in set
+            ]
 
-                if selected_set and "selected_set" not in st.session_state:
-                    st.session_state.selected_set = selected_set[0]
+            # Set up the selectbox with the modified list of options
+            selected_set = st.selectbox(
+                ":blue[Select dataset]",
+                options,
+                index=None,
+                format_func=lambda x: x[1],
+                on_change=handle_selected_file,
+            )
 
-                if "counter" not in st.session_state:
-                    st.session_state.counter = 1
+            if selected_set and "selected_set" not in st.session_state:
+                st.session_state.selected_set = selected_set[0]
 
-                components.html(
-                    f"""
-                        <p>{st.session_state.counter}</p>
-                        <script>
-                            window.parent.document.querySelector('section.main').scrollTo(0, 0);
-                        </script>
-                    """,
-                    height=0,
-                )
+            if "counter" not in st.session_state:
+                st.session_state.counter = 1
 
-    if "selected_set" in st.session_state and "done_set" in st.session_state:
-        if selected_csv_file and st.session_state.selected_set not in st.session_state.done_set:
+            components.html(
+                f"""
+                    <p>{st.session_state.counter}</p>
+                    <script>
+                        window.parent.document.querySelector('section.main').scrollTo(0, 0);
+                    </script>
+                """,
+                height=0,
+            )
+
+    if "selected_set" in st.session_state:
+        if selected_csv_file and st.session_state.selected_set not in done_set:
             selected_csv = "text"
 
             if "page_number" not in st.session_state:
                 st.session_state.page_number = 1
 
-            rows_per_page = 2
+            rows_per_page = 10
             total_rows = len(
                 st.session_state.concatenated_df[
                     st.session_state.concatenated_df["group"]
@@ -341,6 +332,7 @@ def main():
                 st.session_state.selected_set,
             )
 
+            st.sidebar.write(selected_csv_data)
             
             for index, row in selected_csv_data[[selected_csv]].iterrows():
                 st.write(f":blue[Index : {index%100}]")

@@ -59,6 +59,7 @@ def upload_csv_files(folder_path, group_size):
             raise FileNotFoundError(f"The folder path '{folder_path}' does not exist.")
         # Get the parent folder name
         parent_folder_name = os.path.basename(folder_path)
+        folder_name = f"{parent_folder_name}"
 
         files = {}
 
@@ -82,8 +83,28 @@ def upload_csv_files(folder_path, group_size):
                 df["edit_status"] = [False] * len_df
 
                 files[file_name] = df
+        df_get_group, total_group = get_group(files, group_size)
+                
+        for df_key, df in files.items():
+            print("==========")
+            df["group"] = df_get_group[df_key]
 
-        df_get_group = get_group(files, group_size)
+            for i in range(total_group):
+                df_group = df[df["group"] == i]
+                if not df_group.empty:
+                    # print(df_group)   
+                    
+                    # Convert the DataFrame back to a CSV string
+                    modified_csv_content = df_group.to_csv(index=False)
+                    csv_content_bytes = modified_csv_content.encode()
+
+                    # Define the folder name for Firebase Storage
+
+                    # Upload the modified CSV content to Firebase Storage
+                    blob = bucket.blob(f"csv_files/{folder_name}/group_{i}.csv")
+
+                    blob.upload_from_string(csv_content_bytes, content_type="text/csv")
+        # df_get_group = get_group(files, group_size)
 
         for df_key, df in files.items():
             df["group"] = df_get_group[df_key]
@@ -225,7 +246,7 @@ def get_group(files, group):
         df_dict["train.csv"] = pd.DataFrame(arr[:len_train], columns=["group"])
         df_dict["val.csv"] = pd.DataFrame(arr[len_train:], columns=["group"])
 
-        return df_dict
+        return df_dict, total_group
 
     except Exception as e:
         print("An error occurred:", e)
@@ -257,7 +278,7 @@ def name_csv_list(folder_path):
 
             # Extract folder name from the relative path
             folder_name = os.path.dirname(relative_path)
-
+    
             folder_names.add(folder_name)
 
         if "" in folder_names:
@@ -266,6 +287,68 @@ def name_csv_list(folder_path):
         return folder_names
     except Exception as e:
         print("An error occurred:", e)
+        
+# def name_csv_group_list(folder_path):
+#     """
+#     List the names of CSV files in a specified folder path on Firebase Storage.
+
+#     Args:
+#         folder_path (str): The path of the folder containing the CSV files on Firebase Storage.
+
+#     Returns:
+#         set: A set containing the names of CSV files found in the specified folder.
+
+#     Raises:
+#         ValueError: If the folder_path is None or invalid.
+#         IOError: If there are issues listing the CSV files.
+#     """
+#     try:
+#         # List all files in the specified folder
+#         blobs = bucket.list_blobs(prefix=f"{folder_path}")
+#         print(f"folder_path : {folder_path}")
+#         folder_names = set()
+
+#         for blob in blobs:
+#             # Get the path after the prefix
+#             relative_path = os.path.relpath(blob.name, folder_path)
+#             print(relative_path)
+#             # Extract folder name from the relative path
+#             folder_name = os.path.dirname(relative_path.split("\\")[-1])
+#             print(folder_name)
+#             folder_names.add(folder_name)
+
+#         if "" in folder_names:
+#             folder_names.remove("")
+#         print(folder_names)
+        
+#         return folder_names
+#     except Exception as e:
+#         print("An error occurred:", e)
+
+def name_csv_group_list(folder_path):
+    try:
+        # List all files in the specified folder
+        blobs = bucket.list_blobs(prefix=f"{folder_path}")
+        folder_names = set()
+
+        for blob in blobs:
+            # Get the path after the prefix
+            relative_path = os.path.relpath(blob.name, folder_path)
+            # Extract folder name from the relative path
+            folder_name = os.path.dirname(relative_path)
+            folder_names.add(relative_path)
+
+        if "" in folder_names:
+            folder_names.remove("")
+            folder_names.remove("train.csv")
+            folder_names.remove("val.csv")
+            
+        
+        return folder_names
+    
+    except Exception as e:
+        print("An error occurred:", e)
+
 
 
 def get_csv_file(folder_path, file):
