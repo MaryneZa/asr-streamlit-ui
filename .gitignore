@@ -162,4 +162,4 @@ cython_debug/
 .streamlit/secrets.toml
 database/*.json
 node_modules/
-main-0.py
+stuff/
