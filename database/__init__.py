@@ -5,6 +5,7 @@ import pandas as pd
 import os
 from uuid import uuid4
 import math
+from io import BytesIO, StringIO
 
 # from io import StringIO
 
@@ -83,28 +84,34 @@ def upload_csv_files(folder_path, group_size):
                 df["edit_status"] = [False] * len_df
 
                 files[file_name] = df
+                print(f"len {file_name} : {len(df)}")
         df_get_group, total_group = get_group(files, group_size)
-                
+
+        group_data = {}  # Dictionary to accumulate data for each group
+
+        # Iterate over each file and accumulate data for each group
         for df_key, df in files.items():
-            print("==========")
             df["group"] = df_get_group[df_key]
 
-            for i in range(total_group):
+            for i in range(total_group + 1):
                 df_group = df[df["group"] == i]
                 if not df_group.empty:
-                    # print(df_group)   
-                    
-                    # Convert the DataFrame back to a CSV string
-                    modified_csv_content = df_group.to_csv(index=False)
-                    csv_content_bytes = modified_csv_content.encode()
+                    group_data.setdefault(i, []).append(df_group)
 
-                    # Define the folder name for Firebase Storage
+        # Now, upload the accumulated data for each group to Firebase Storage
+        for i, data_list in group_data.items():
+            # Concatenate all DataFrames in the list for the same group
+            combined_df = pd.concat(data_list)
 
-                    # Upload the modified CSV content to Firebase Storage
-                    blob = bucket.blob(f"csv_files/{folder_name}/group_{i}.csv")
+            print(f"group: {i}, len: {len(combined_df)}")
 
-                    blob.upload_from_string(csv_content_bytes, content_type="text/csv")
-        # df_get_group = get_group(files, group_size)
+            # Convert the combined DataFrame back to a CSV string
+            modified_csv_content = combined_df.to_csv(index=False)
+            csv_content_bytes = modified_csv_content.encode()
+
+            # Upload the modified CSV content to Firebase Storage
+            blob = bucket.blob(f"csv_files/{folder_name}/group_{i}.csv")
+            blob.upload_from_string(csv_content_bytes, content_type="text/csv")
 
         for df_key, df in files.items():
             df["group"] = df_get_group[df_key]
@@ -237,6 +244,7 @@ def get_group(files, group):
         # Calculate total number of groups and assign group numbers to the array
         total_group = math.ceil(len(arr) / group)
         for i in range(total_group):
+            print(f"i : {i}")
             start_idx = i * group
             end_idx = min(start_idx + group, len(arr))
             arr[start_idx:end_idx] = [i + 1] * (end_idx - start_idx)
@@ -278,7 +286,7 @@ def name_csv_list(folder_path):
 
             # Extract folder name from the relative path
             folder_name = os.path.dirname(relative_path)
-    
+
             folder_names.add(folder_name)
 
         if "" in folder_names:
@@ -287,45 +295,22 @@ def name_csv_list(folder_path):
         return folder_names
     except Exception as e:
         print("An error occurred:", e)
-        
-# def name_csv_group_list(folder_path):
-#     """
-#     List the names of CSV files in a specified folder path on Firebase Storage.
 
-#     Args:
-#         folder_path (str): The path of the folder containing the CSV files on Firebase Storage.
-
-#     Returns:
-#         set: A set containing the names of CSV files found in the specified folder.
-
-#     Raises:
-#         ValueError: If the folder_path is None or invalid.
-#         IOError: If there are issues listing the CSV files.
-#     """
-#     try:
-#         # List all files in the specified folder
-#         blobs = bucket.list_blobs(prefix=f"{folder_path}")
-#         print(f"folder_path : {folder_path}")
-#         folder_names = set()
-
-#         for blob in blobs:
-#             # Get the path after the prefix
-#             relative_path = os.path.relpath(blob.name, folder_path)
-#             print(relative_path)
-#             # Extract folder name from the relative path
-#             folder_name = os.path.dirname(relative_path.split("\\")[-1])
-#             print(folder_name)
-#             folder_names.add(folder_name)
-
-#         if "" in folder_names:
-#             folder_names.remove("")
-#         print(folder_names)
-        
-#         return folder_names
-#     except Exception as e:
-#         print("An error occurred:", e)
 
 def name_csv_group_list(folder_path):
+    """
+    List the names of CSV files in a specified folder path on Firebase Storage.
+
+    Args:
+        folder_path (str): The path of the folder containing the CSV files on Firebase Storage.
+
+    Returns:
+        set: A set containing the names of CSV files found in the specified folder.
+
+    Raises:
+        ValueError: If the folder_path is None or invalid.
+        IOError: If there are issues listing the CSV files.
+    """
     try:
         # List all files in the specified folder
         blobs = bucket.list_blobs(prefix=f"{folder_path}")
@@ -335,20 +320,13 @@ def name_csv_group_list(folder_path):
             # Get the path after the prefix
             relative_path = os.path.relpath(blob.name, folder_path)
             # Extract folder name from the relative path
-            folder_name = os.path.dirname(relative_path)
-            folder_names.add(relative_path)
+            if relative_path not in ["", "train.csv", "val.csv"]:
+                folder_names.add(relative_path)
 
-        if "" in folder_names:
-            folder_names.remove("")
-            folder_names.remove("train.csv")
-            folder_names.remove("val.csv")
-            
-        
         return folder_names
-    
+
     except Exception as e:
         print("An error occurred:", e)
-
 
 
 def get_csv_file(folder_path, file):
@@ -370,8 +348,6 @@ def get_csv_file(folder_path, file):
     try:
         if folder_path is None:
             return None, "Folder path is None.", None
-
-        path = folder_path.split("/")
 
         blob = bucket.get_blob(f"csv_files/{folder_path}/{file}")
 
@@ -474,3 +450,104 @@ def download_csv_file(remote_file_path, local_destination_folder):
         print("CSV file downloaded successfully.")
     except Exception as e:
         print("An error occurred:", e)
+
+
+def concat_csv_files_for_downloading(remote_file_path, local_destination_folder):
+    """
+    Concatenate CSV files from Firebase Storage and save them to the specified local folder.
+
+    This function downloads all CSV files from a specified folder in Firebase Storage,
+    concatenates them, sorts by the "group" column, and then splits the concatenated DataFrame
+    into train and validation sets based on their respective lengths.
+
+    Parameters:
+        remote_file_path (str): The path of the folder containing CSV files on Firebase Storage.
+        local_destination_folder (str): The local folder where the concatenated CSV files will be saved.
+
+    Raises:
+        ValueError: If the remote file path or local destination folder is invalid.
+        FileNotFoundError: If there are no CSV files in the specified remote location.
+        IOError: If there are issues downloading the CSV files or saving them locally.
+
+    Returns:
+        None
+    """
+
+    # Initialize an empty list to store DataFrame objects
+    dfs = []
+    len_train = 0
+    len_val = 0
+    cnt_row = 0
+    # Iterate through each blob in the specified folder
+    blobs = bucket.list_blobs(prefix=f"csv_files/{remote_file_path}")
+
+    for blob in blobs:
+        # Check if the blob is a CSV file
+        if blob.name.endswith(".csv"):
+            # Download the CSV file contents
+            blob_content = blob.download_as_string()
+
+            # Convert the CSV file contents to a DataFrame
+            df = pd.read_csv(StringIO(blob_content.decode()))
+            if blob.name.split("/")[-1] == "train.csv":
+                len_train = len(df)
+                print(len_train)
+
+            elif blob.name.split("/")[-1] == "val.csv":
+                len_val = len(df)
+                print(len_val)
+            else:
+                # Append the DataFrame to the list
+                dfs.append(df)
+                cnt_row += len(df)
+                print(f"{blob.name}, {len(df)}")
+
+    # Concatenate all DataFrames in the list
+    concatenated_df = pd.concat(dfs, ignore_index=True)
+    # Sort the DataFrame by the "group" column
+    concatenated_df_sorted = concatenated_df.sort_values(by="group")
+
+    # Check if train.csv and val.csv lengths are found
+    if len_train == 0 or len_val == 0:
+        print("Failed to find lengths of train.csv or val.csv.")
+        return
+    print(len(concatenated_df_sorted))
+    # Split concatenated DataFrame into train.csv and val.csv based on lengths
+    train_df = concatenated_df_sorted[:len_train]
+    val_df = concatenated_df_sorted[len_train:]
+    # Save the concatenated DataFrame to a CSV file
+    train_df.to_csv(
+        f"{local_destination_folder}/{remote_file_path}_train.csv", index=False
+    )
+    val_df.to_csv(f"{local_destination_folder}/{remote_file_path}_val.csv", index=False)
+
+    print(f"Concatenated CSV file saved to: {local_destination_folder}")
+
+
+def editing_done(remote_file_path, group_num):
+    """
+    Mark all rows in a specified group CSV file as edited by setting the "edit_status" column to True.
+
+    This function downloads a CSV file corresponding to a specific group from Firebase Storage,
+    marks all rows as edited, and uploads the modified CSV file back to Firebase Storage.
+
+    Parameters:
+        remote_file_path (str): The path of the folder containing the group CSV files on Firebase Storage.
+        group_num (int): The group number identifying which group's CSV file to edit.
+
+    Raises:
+        ValueError: If the remote file path or group number is invalid.
+        FileNotFoundError: If the specified group CSV file does not exist in the remote location.
+        IOError: If there are issues downloading, editing, or uploading the CSV file.
+
+    Returns:
+        None
+    """
+
+    csv_file = get_csv_file(remote_file_path, f"group_{group_num}.csv")
+    df = pd.read_csv(BytesIO(csv_file))
+
+    df["edit_status"] = [True] * len(df)
+    csv = df.to_csv(index=False)
+
+    upload_edited_csv_file(csv, f"{remote_file_path}/group_{group_num}.csv")

@@ -43,10 +43,9 @@ def load_data_for_page(data_frame, page_number, rows_per_page, selected_set):
 
         # Return the subset of the DataFrame for the specified page
         return df.iloc[start_index:end_index]
-    
+
     except Exception as e:
         print("An error occurred:", e)
-
 
 
 def edit_status_done(selected_set):
@@ -67,16 +66,14 @@ def edit_status_done(selected_set):
         st.session_state.concatenated_df.loc[
             st.session_state.concatenated_df["group"] == selected_set, "edit_status"
         ] = True
-        
 
         handle_next_page()
 
-        # Clear session state 
+        # Clear session state
         st.session_state.clear()
-    
+
     except Exception as e:
         print("An error occurred:", e)
-
 
 
 def save_edited_csv(data_frame, csv_path):
@@ -98,10 +95,9 @@ def save_edited_csv(data_frame, csv_path):
         edited_csv = data_frame.to_csv(index=False)
 
         upload_edited_csv_file(edited_csv, csv_path)
-    
+
     except Exception as e:
         print("An error occurred:", e)
-
 
 
 def handle_selected_file():
@@ -114,10 +110,9 @@ def handle_selected_file():
     try:
         # Clear session state
         st.session_state.clear()
-    
+
     except Exception as e:
         print("An error occurred:", e)
-
 
 
 def handle_next_page():
@@ -130,9 +125,12 @@ def handle_next_page():
     try:
 
         csv_name = st.session_state.selected_csv_file
-        df_group = st.session_state.concatenated_df[st.session_state.concatenated_df["group"] == st.session_state.selected_set].iloc[:]
-        save_edited_csv(df_group, f"{csv_name}/group_{st.session_state.selected_set}.csv")
-        
+        df_group = st.session_state.concatenated_df[
+            st.session_state.concatenated_df["group"] == st.session_state.selected_set
+        ].iloc[:]
+        save_edited_csv(
+            df_group, f"{csv_name}/group_{st.session_state.selected_set}.csv"
+        )
 
         # Display a success toast message
         st.toast(":green[Edited CSV files saved successfully.]", icon="🎉")
@@ -140,10 +138,9 @@ def handle_next_page():
         # Update session state variables
         st.session_state.page_number += 1
         st.session_state.counter += 1
-    
+
     except Exception as e:
         print("An error occurred:", e)
-
 
 
 def get_group_numbers_with_edit_status_true(csv_group_list):
@@ -168,15 +165,13 @@ def get_group_numbers_with_edit_status_true(csv_group_list):
 
             # Get the unique values from the group column
             group_numbers_edit_true = df["edit_status"].unique()
-            if bool(group_numbers_edit_true[0]) :
+            if bool(group_numbers_edit_true[0]):
                 file = file.split(".csv")[0]
                 num.append(int(file.split("_")[-1]))
-                print("HI")
         return num
-    
+
     except Exception as e:
         print("An error occurred:", e)
-
 
 
 def handle_previous_page():
@@ -190,10 +185,9 @@ def handle_previous_page():
         # Update session state variables
         st.session_state.page_number -= 1
         st.session_state.counter += 1
-    
+
     except Exception as e:
         print("An error occurred:", e)
-
 
 
 def load_concat_data(csv_file):
@@ -225,10 +219,9 @@ def load_concat_data(csv_file):
 
         # Return concatenated DataFrame and length of train data
         return concatenated_df, len(train_data)
-    
+
     except Exception as e:
         print("An error occurred:", e)
-
 
 
 def main():
@@ -263,30 +256,34 @@ def main():
     with cols_file[1]:
         if selected_csv_file:
             st.session_state.selected_csv_file = selected_csv_file
-            
-            csv_group_list = name_csv_group_list(f"csv_files/{st.session_state.selected_csv_file}")            
-            
+
+            csv_group_list = name_csv_group_list(
+                f"csv_files/{st.session_state.selected_csv_file}"
+            )
+
             if "concatenated_df" not in st.session_state:
                 st.session_state.concatenated_df, st.session_state.len_train_df = (
                     load_concat_data(st.session_state.selected_csv_file)
                 )
-                # st.sidebar.write("Hi")
 
-            
             highest_value = st.session_state.concatenated_df["group"].max()
 
-            if "done_set" not in st.session_state:
+            if "done_set" not in st.session_state and csv_group_list:
                 st.session_state.done_set = get_group_numbers_with_edit_status_true(
                     csv_group_list
                 )
-                
-            if "done_set" in st.session_state:
-                
-                set = list(range(1, highest_value + 1))
 
+            if "done_set" in st.session_state:
+
+                set_group = list(range(1, highest_value + 1))
                 # Generate the list of options with labels indicating whether they are done or not
                 options = [
-                    (num, f"{num} (done)") if num in st.session_state.done_set else (num, num) for num in set
+                    (
+                        (num, f"{num} (done)")
+                        if num in st.session_state.done_set
+                        else (num, num)
+                    )
+                    for num in set_group
                 ]
 
                 # Set up the selectbox with the modified list of options
@@ -315,7 +312,10 @@ def main():
                 )
 
     if "selected_set" in st.session_state and "done_set" in st.session_state:
-        if selected_csv_file and st.session_state.selected_set not in st.session_state.done_set:
+        if (
+            selected_csv_file
+            and st.session_state.selected_set not in st.session_state.done_set
+        ):
             selected_csv = "text"
 
             if "page_number" not in st.session_state:
@@ -340,7 +340,6 @@ def main():
                 st.session_state.selected_set,
             )
 
-            
             for index, row in selected_csv_data[[selected_csv]].iterrows():
                 st.write(f":blue[Index : {index%100}]")
                 with st.container(border=True):
