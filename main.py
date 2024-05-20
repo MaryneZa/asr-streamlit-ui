@@ -341,7 +341,7 @@ def main():
             )
 
             for index, row in selected_csv_data[[selected_csv]].iterrows():
-                st.write(f":blue[Index : {index%100}]")
+                st.write(f":blue[Index : {index}]")
                 with st.container(border=True):
                     text_input_key = f"text-{index}-{selected_csv}"
 
